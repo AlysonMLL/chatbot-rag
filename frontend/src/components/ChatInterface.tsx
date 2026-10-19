@@ -62,6 +62,7 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
         body: JSON.stringify({
           filename: fileName,
           question: text,
+          history: messages.slice(1).map((m) => ({ role: m.role, content: m.content })),
         }),
       });
 

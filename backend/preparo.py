@@ -116,5 +116,7 @@ def gerar_contexto(df: pd.DataFrame, aviso: str | None = None) -> str:
         "- Em pedidos de 'top N', devolva exatamente N linhas distintas, sem repetir a mesma entidade.",
         "- Antes de somar ou contar por entidade, verifique linhas duplicadas e evite contar a mesma coisa duas vezes.",
         "- Considere valores nulos (NaN) e diga quando um resultado ignora linhas sem dados.",
+        "- Em rankings com empate na última posição, avise quem mais empatou (ex.: 'há mais N com o mesmo valor').",
+        "- Médias, somas e contagens ignoram nulos: diga em quantas linhas havia dado, em vez de afirmar que usou todas.",
     ]
     return _escapar_chaves("\n".join(linhas))
