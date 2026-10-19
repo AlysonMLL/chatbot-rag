@@ -1,3 +1,15 @@
+/* O que há aqui:
+- Componente de UI para o Chat com a IA.
+- Gerenciamento de estado das mensagens (user e assistant) e status de digitação.
+- Integração real via `fetch` POST com o endpoint FastAPI (`/api/chat`).
+- Renderização formatada das respostas (Markdown-like) para tabelas e negrito.
+
+Função do arquivo: Interface de Interação Analítica.
+É o componente central da experiência do usuário, onde a linguagem natural é transformada
+em consultas de dados. Ele se comunica de forma assíncrona com o backend, lidando com 
+tempos de resposta dinâmicos do LLM (LangChain) e apresentando os insights retornados.
+*/
+
 import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, User, Table2, TrendingUp, Filter, Calculator } from 'lucide-react';
 
@@ -5,7 +17,6 @@ type Message = {
   id: number;
   role: 'user' | 'assistant';
   content: string;
-  table?: boolean;
 };
 
 const suggestedQuestions = [
@@ -15,24 +26,12 @@ const suggestedQuestions = [
   { icon: Table2, text: 'Mostrar os 10 maiores clientes' },
 ];
 
-const mockResponses: Record<string, string> = {
-  'Qual o total de vendas por região?': 'Com base nos dados analisados, aqui está o resumo de vendas por região:\n\n• **Sudeste**: R$ 487.350 (38%) — Maior volume de vendas\n• **Sul**: R$ 298.120 (23%)\n• **Nordeste**: R$ 256.890 (20%)\n• **Norte**: R$ 142.680 (11%)\n• **Centro-Oeste**: R$ 98.540 (8%)\n\nO total geral é **R$ 1.283.580**, com o Sudeste representando 38% das vendas, liderando significativamente.',
-  'Filtrar pedidos com status "Pendente"': 'Encontrei **1.247 pedidos** com status "Pendente" no dataset. Isso representa aproximadamente 9.7% do total de 12.847 registros.\n\n**Distribuição por região:**\n• Sudeste: 512 pedidos\n• Sul: 298 pedidos\n• Nordeste: 215 pedidos\n• Norte: 142 pedidos\n• Centro-Oeste: 80 pedidos\n\nDeseja que eu gere uma tabela detalhada com esses pedidos?',
-  'Calcular a média de valor por pedido': 'A média de valor por pedido é **R$ 99.92**, calculada sobre o total de R$ 1.283.580 dividido por 12.847 pedidos.\n\n**Estatísticas adicionais:**\n• Mediana: R$ 78.50\n• Desvio padrão: R$ 156.30\n• Menor pedido: R$ 12.90\n• Maior pedido: R$ 4.890.00\n\nA distribuição é assimétrica à direita, indicando que a maioria dos pedidos concentra-se em valores baixos.',
-  'Mostrar os 10 maiores clientes': 'Aqui estão os 10 clientes com maior volume de compras:\n\n| # | Cliente | Total (R$) | Pedidos |\n|---|---------|-----------|---------|\n| 1 | Maria Silva | 48.250 | 52 |\n| 2 | Pedro Lima | 41.890 | 38 |\n| 3 | Ana Souza | 37.640 | 41 |\n| 4 | João Costa | 33.120 | 35 |\n| 5 | Carla Dias | 28.560 | 29 |\n| 6 | Bruno Alves | 26.340 | 27 |\n| 7 | Fernanda Rocha | 24.780 | 24 |\n| 8 | Lucas Martins | 22.450 | 23 |\n| 9 | Patricia Gomes | 19.890 | 20 |\n| 10 | Rafael Teixeira | 18.230 | 19 |\n\nEsses 10 clientes representam **R$ 301.250** (23.5%) do faturamento total.',
-};
-
-function getMockResponse(question: string): string {
-  if (mockResponses[question]) return mockResponses[question];
-  return `Analisei sua pergunta sobre "${question}". Com base nos dados do arquivo carregado, encontrei informações relevantes que podem responder à sua consulta. Os dados tabulares contêm 12.847 registros distribuídos em 10 colunas, cobrindo categorias como vendas, clientes, pedidos e regiões. \n\nPara uma resposta mais específica, tente uma das perguntas sugeridas abaixo.`;
-}
-
 export default function ChatInterface({ fileName }: { fileName: string }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
       role: 'assistant',
-      content: `Arquivo **${fileName}** carregado com sucesso! Encontrei 12.847 linhas e 10 colunas. Você pode me perguntar qualquer coisa sobre esses dados — totais, filtros, médias, tendências e muito mais.`,
+      content: `Arquivo **${fileName}** carregado e indexado com sucesso! A IA já tem acesso ao seu conteúdo completo na memória. Você pode me perguntar qualquer coisa sobre esses dados — totais, filtros, médias, tendências e muito mais.`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -40,32 +39,61 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
 
+  // Auto-scroll para a última mensagem
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
-  const sendMessage = (text: string) => {
+  // Função REAL de envio para a API
+  const sendMessage = async (text: string) => {
     const userMsg: Message = { id: nextId.current++, role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response: Message = {
+    try {
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: fileName,
+          question: text,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha na comunicação com o servidor de IA.');
+      }
+
+      const data = await response.json();
+      
+      const assistantMsg: Message = {
         id: nextId.current++,
         role: 'assistant',
-        content: getMockResponse(text),
+        content: data.answer, // Aqui vem a resposta do LangChain/GPT-4o-mini
       };
-      setMessages((prev) => [...prev, response]);
+      
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (error) {
+      console.error(error);
+      const errorMsg: Message = {
+        id: nextId.current++,
+        role: 'assistant',
+        content: 'Desculpe, ocorreu um erro de conexão com o servidor ou a IA falhou em processar a resposta.',
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1400);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
     sendMessage(input.trim());
   };
 
@@ -80,7 +108,7 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
           <h3 className="text-sm font-semibold">TabulaRAG Assistant</h3>
           <p className="text-xs text-green-400 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Analisando {fileName}
+            Analisando {fileName} via LangChain
           </p>
         </div>
       </div>
@@ -134,20 +162,21 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte algo sobre seus dados..."
-              className="w-full bg-white/5 border border-white/10 focus:border-purple-500/50 rounded-xl px-5 py-3.5 text-sm text-white placeholder-gray-500 outline-none transition-colors"
+              disabled={isTyping}
+              placeholder={isTyping ? "Aguarde a IA responder..." : "Pergunte algo sobre seus dados (ex: 'Me mostre a soma de...')..."}
+              className="w-full bg-white/5 border border-white/10 focus:border-purple-500/50 rounded-xl px-5 py-3.5 text-sm text-white placeholder-gray-500 outline-none transition-colors disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isTyping}
             className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4 text-white" />
           </button>
         </form>
         <p className="text-xs text-gray-600 mt-2 text-center">
-          TabulaRAG pode cometer erros. Verifique dados críticos.
+          TabulaRAG usa IA e pode cometer erros. Verifique os cálculos críticos.
         </p>
       </div>
     </div>
@@ -183,7 +212,10 @@ function FormattedContent({ content }: { content: string }) {
     <div className="space-y-1">
       {lines.map((line, i) => {
         if (line.trim() === '') return <div key={i} className="h-1" />;
-        if (line.startsWith('|')) return <div key={i} className="font-mono text-xs text-gray-300 overflow-x-auto scrollbar-custom whitespace-pre">{line}</div>;
+        // Detecção de tabelas Markdown
+        if (line.startsWith('|')) return <div key={i} className="font-mono text-xs text-gray-300 overflow-x-auto scrollbar-custom whitespace-pre bg-black/20 p-2 rounded-md my-2">{line}</div>;
+        
+        // Renderização simples de negrito
         const boldMatch = line.match(/\*\*(.+?)\*\*/);
         if (boldMatch) {
           const parts = line.split(/\*\*(.+?)\*\*/);
@@ -193,7 +225,12 @@ function FormattedContent({ content }: { content: string }) {
             </p>
           );
         }
-        if (line.startsWith('• ')) return <p key={i} className="text-gray-300 pl-1">{line}</p>;
+        
+        // Renderização de listas (bullets)
+        if (line.trim().startsWith('-') || line.trim().startsWith('* ') || line.trim().match(/^\d+\./)) {
+           return <p key={i} className="text-gray-300 pl-4">{line}</p>;
+        }
+        
         return <p key={i} className="text-gray-300">{line}</p>;
       })}
     </div>
