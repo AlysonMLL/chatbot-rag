@@ -72,6 +72,29 @@ async def upload_file(file: UploadFile = File(...)):
         "size_mb": round(len(contents) / (1024 * 1024), 2),
     }
         
+def corrigir_formato(_erro) -> str:
+    return ("Formato inválido. Quando tiver a resposta, escreva exatamente: "
+            "'Thought: I now know the final answer' e, na linha seguinte, "
+            "'Final Answer: <resposta completa em português>'.")
+
+
+def criar_agente(df, modelo: str):
+    llm = ChatOpenAI(
+        model=modelo,
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=os.getenv("LLM_BASE_URL"),
+        temperature=0.1,
+        timeout=20,        # corta chamadas "travadas" de ~35 s
+        max_retries=2,     
+    )
+    return create_pandas_dataframe_agent(
+        llm, df, verbose=True, allow_dangerous_code=True,
+        max_iterations=10, number_of_head_rows=3,
+        agent_executor_kwargs={
+            "handle_parsing_errors": corrigir_formato,
+            "max_execution_time": 90,
+        },
+    )
 
 class ChatRequest(BaseModel):
     filename: str
@@ -98,29 +121,50 @@ async def chat_with_data(request: ChatRequest):
             raise ValueError("Extensão de arquivo não suportada para chat.")
 
         print("Inicializando LangChain...", file=sys.stderr)
+
+        modelos = [m for m in (os.getenv("LLM_MODEL"), os.getenv("LLM_MODEL_FALLBACK")) if m]
+        for modelo in modelos:
+            try:
+                agent = criar_agente(df, modelo)
+                resultado = agent.invoke(request.question)
+                break
+            except Exception as e:
+                print(f"Modelo {modelo} falhou: {e}", file=sys.stderr)
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="O serviço de IA está sobrecarregado. Tente novamente em instantes.",
+            )
         
-        llm = ChatOpenAI(
-            model=os.getenv("LLM_MODEL", "gemini-2.5-flash"),
-            api_key=os.getenv("LLM_API_KEY"),
-            base_url=os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
-            temperature=0.1,
-        )
+        # llm = ChatOpenAI(
+        #     model=os.getenv("LLM_MODEL"),
+        #     api_key=os.getenv("LLM_API_KEY"),
+        #     base_url=os.getenv("LLM_BASE_URL"),
+        #     temperature=0.1,
+        #     reasoning_effort="low",   # menos "pensamento" = respostas bem mais rápidas
+        #     timeout=60,
+        #     max_retries=1,
+        # )
 
-        agent = create_pandas_dataframe_agent(
-            llm,
-            df,
-            verbose=True,
-            allow_dangerous_code=True,
-            max_iterations=6,                                        # evita estourar o limite do plano gratuito
-            agent_executor_kwargs={"handle_parsing_errors": True},
-        )
+        # agent = create_pandas_dataframe_agent(
+        #     llm,
+        #     df,
+        #     verbose=True,
+        #     allow_dangerous_code=True,
+        #     max_iterations=10,
+        #     number_of_head_rows=3,
+        #     agent_executor_kwargs={
+        #         "handle_parsing_errors": corrigir_formato,   # em vez de True
+        #         "max_execution_time": 90,                    
+        #     },
+        # )
 
-        print(f"Enviando pergunta: '{request.question}'", file=sys.stderr)
-        # O agente Pandas mais recente prefere a string direta quando não usamos ferramentas OpenAI estritas
-        resposta = agent.invoke(request.question)
+        # print(f"Enviando pergunta: '{request.question}'", file=sys.stderr)
+        # # O agente Pandas mais recente prefere a string direta quando não usamos ferramentas OpenAI estritas
+        # resposta = agent.invoke(request.question)
         
         # O agente pode retornar um dict (com 'output') ou uma string
-        final_answer = resposta.get("output") if isinstance(resposta, dict) else str(resposta)
+        final_answer = resultado.get("output") if isinstance(resultado, dict) else str(resultado)
         
         print("Resposta gerada com sucesso.", file=sys.stderr)
         return {"answer": final_answer}
@@ -132,3 +176,5 @@ async def chat_with_data(request: ChatRequest):
         traceback.print_exc(file=sys.stderr)
         print(f"==========================================\n", file=sys.stderr)
         raise HTTPException(status_code=500, detail=f"Erro interno do servidor IA: {str(e)}")
+
+

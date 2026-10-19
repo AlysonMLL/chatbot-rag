@@ -8,3 +8,4 @@ uploads/
 teste_http.py
 teste_llm.py
 teste_probe.py
+bench_llm.py
