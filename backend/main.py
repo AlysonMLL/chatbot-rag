@@ -17,6 +17,7 @@ from pydantic import BaseModel
 import pandas as pd
 import io
 import os
+import sys
 from dotenv import load_dotenv
 
 # Imports do LangChain e OpenAI
@@ -35,7 +36,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cria a pasta de uploads fisicamente no projeto
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -44,12 +44,12 @@ async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
     
     try:
-        # SALVA O ARQUIVO NO DISCO (Garante que a rota de chat vai achá-lo)
+        # SALVA O ARQUIVO NO DISCO
+        # Usa o nome original do arquivo
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as f:
             f.write(contents)
 
-        # Lê para extrair metadados para a interface
         if file.filename.endswith('.csv'):
             df = pd.read_csv(io.BytesIO(contents))
         elif file.filename.endswith(('.xls', '.xlsx')):
@@ -75,7 +75,6 @@ async def upload_file(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 
-# Modelo Pydantic para tipar a requisição de Chat
 class ChatRequest(BaseModel):
     filename: str
     question: str
@@ -84,20 +83,24 @@ class ChatRequest(BaseModel):
 async def chat_with_data(request: ChatRequest):
     file_path = os.path.join(UPLOAD_DIR, request.filename)
     
-    # 1. Verifica se o arquivo existe fisicamente no disco
+    # Validação rigorosa com log de depuração
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor. Faça o upload novamente.")
+        print(f"ERRO 404: Arquivo esperado em {file_path} não foi encontrado.", file=sys.stderr)
+        raise HTTPException(status_code=404, detail=f"Arquivo '{request.filename}' não encontrado no servidor. Por favor, faça o upload novamente.")
 
     try:
-        # Lê o arquivo recém salvo no disco
+        print(f"Carregando {file_path} para análise...", file=sys.stderr)
         if request.filename.endswith('.csv'):
             df = pd.read_csv(file_path)
         elif request.filename.endswith(('.xls', '.xlsx')):
             df = pd.read_excel(file_path)
         elif request.filename.endswith('.json'):
             df = pd.read_json(file_path)
+        else:
+            raise ValueError("Extensão de arquivo não suportada para chat.")
 
-        # 2. Configura o LLM com o GitHub Models
+        print("Inicializando LangChain...", file=sys.stderr)
+        
         llm = ChatOpenAI(
             model="gpt-4o-mini",
             api_key=os.getenv("GITHUB_TOKEN"),
@@ -105,22 +108,30 @@ async def chat_with_data(request: ChatRequest):
             temperature=0.1 
         )
 
-        # 3. Cria o Agente do Pandas
+        # Configuração simplificada e mais resiliente do Agente
         agent = create_pandas_dataframe_agent(
             llm,
             df,
             verbose=True, 
             allow_dangerous_code=True,
-            agent_type="openai-tools"
+            handle_parsing_errors=True # Crucial: evita que o agente quebre silenciosamente
+            # Removido o agent_type="openai-tools" para forçar o fallback seguro
         )
 
-        # 4. Executa a pergunta
-        resposta = agent.invoke({"input": request.question})
+        print(f"Enviando pergunta: '{request.question}'", file=sys.stderr)
+        # O agente Pandas mais recente prefere a string direta quando não usamos ferramentas OpenAI estritas
+        resposta = agent.invoke(request.question)
         
-        return {"answer": resposta["output"]}
+        # O agente pode retornar um dict (com 'output') ou uma string
+        final_answer = resposta.get("output") if isinstance(resposta, dict) else str(resposta)
+        
+        print("Resposta gerada com sucesso.", file=sys.stderr)
+        return {"answer": final_answer}
         
     except Exception as e:
-        print(f"\n==========================================")
-        print(f"🚨 ERRO DETALHADO NO BACKEND: {str(e)}")
-        print(f"==========================================\n")
-        raise HTTPException(status_code=500, detail=f"Erro ao processar a pergunta: {str(e)}")
+        print(f"\n==========================================", file=sys.stderr)
+        print(f"🚨 ERRO DETALHADO NO BACKEND: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        print(f"==========================================\n", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"Erro interno do servidor IA: {str(e)}")
