@@ -84,7 +84,12 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
       const errorMsg: Message = {
         id: nextId.current++,
         role: 'assistant',
-        content: 'Desculpe, ocorreu um erro de conexão com o servidor ou a IA falhou em processar a resposta.',
+        content:
+          error instanceof TypeError
+            ? 'Não consegui conectar ao servidor. Ele está rodando?'
+            : error instanceof Error
+              ? error.message
+              : 'Ocorreu um erro inesperado.',
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
