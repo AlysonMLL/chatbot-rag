@@ -66,7 +66,8 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
       });
 
       if (!response.ok) {
-        throw new Error('Falha na comunicação com o servidor de IA.');
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.detail ?? 'Falha na comunicação com o servidor de IA.');
       }
 
       const data = await response.json();

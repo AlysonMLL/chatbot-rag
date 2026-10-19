@@ -32,23 +32,46 @@ export default function LandingState({ onFileUploaded }: LandingStateProps) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleFile = useCallback((name: string) => {
-    setSelectedFile(name);
-    setIsUploading(true);
-    setTimeout(() => onFileUploaded(name), 1400);
-  }, [onFileUploaded]);
+const handleFile = useCallback(async (file: File) => {
+  setSelectedFile(file.name);
+  setIsUploading(true);
+  setUploadError(null);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file); // mesmo nome do parâmetro `file` do FastAPI
+
+    const response = await fetch('http://localhost:8000/api/upload', {
+      method: 'POST',
+      body: formData, 
+    });
+
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      throw new Error(data.detail ?? data.error ?? 'Falha no upload.');
+    }
+    onFileUploaded(data.filename);
+  } catch (err) {
+    setUploadError(err instanceof Error ? err.message : 'Erro inesperado no upload.');
+    setSelectedFile(null);
+  } finally {
+    setIsUploading(false);
+  }
+}, [onFileUploaded]);
+
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
     const file = event.dataTransfer.files?.[0];
-    if (file) handleFile(file.name);
+    if (file) handleFile(file);
   }, [handleFile]);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) handleFile(file.name);
+    if (file) handleFile(file);
   }, [handleFile]);
 
   return (
@@ -91,6 +114,11 @@ export default function LandingState({ onFileUploaded }: LandingStateProps) {
                 <div className="relative z-10 flex justify-center gap-4 pb-8"><div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/4 animate-pulse-glow"><FileSpreadsheet className="h-6 w-6 text-green-400" /></div><div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/4 animate-pulse-glow" style={{ animationDelay: '0.5s' }}><FileJson className="h-6 w-6 text-yellow-400" /></div><div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/4 animate-pulse-glow" style={{ animationDelay: '1s' }}><FileText className="h-6 w-6 text-blue-400" /></div></div>
                 {!isUploading ? <><div className="relative z-10 mb-4 flex justify-center"><div className={`flex h-20 w-20 items-center justify-center rounded-full transition-all duration-300 ${isDragging ? 'scale-110 bg-purple-500/20' : 'bg-white/5'}`}><UploadCloud className={`h-10 w-10 ${isDragging ? 'text-purple-300' : 'text-gray-400'}`} /></div></div><h3 className="relative z-10 mb-2 text-center text-xl font-semibold">{isDragging ? 'Solte o arquivo aqui' : 'Arraste e solte seu arquivo'}</h3><p className="relative z-10 mb-6 text-center text-sm text-gray-500">ou clique para procurar no seu computador</p><div className="relative z-10 flex flex-wrap justify-center gap-2">{['CSV', 'XLSX', 'XLS', 'JSON'].map((format) => <span key={format} className="rounded-md border border-white/5 bg-white/5 px-3 py-1 font-mono text-xs text-gray-400">{format}</span>)}</div></> : <div className="relative z-10 py-6 text-center"><div className="mb-4 flex justify-center"><div className="relative h-16 w-16"><div className="absolute inset-0 rounded-full border-4 border-white/10" /><div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-purple-500" /></div></div><h3 className="mb-1 text-lg font-semibold">Processando arquivo...</h3><p className="mx-auto max-w-xs truncate text-sm text-gray-500">{selectedFile}</p>                <div className="mx-auto mt-4 h-1.5 max-w-xs overflow-hidden rounded-full bg-white/5"><div className="h-full w-full bg-linear-to-r from-purple-500 to-blue-500" /></div></div>}
                 <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls,.json" onChange={handleInputChange} className="hidden" />
+                {uploadError && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm text-red-400">{uploadError}</p>
+                  </div>
+                )}
               </div>
               <p className="mt-4 text-center text-xs text-gray-600">Seus dados são processados localmente. Nenhum dado é compartilhado.</p>
             </div>

@@ -19,6 +19,7 @@ import io
 import os
 import sys
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Imports do LangChain e OpenAI
 from langchain_openai import ChatOpenAI
@@ -36,44 +37,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED = {".csv", ".xls", ".xlsx", ".json"}
+
+def safe_path(filename: str) -> Path:
+    name = Path(filename).name  # descarta pastas e bloqueia "../"
+    if Path(name).suffix.lower() not in ALLOWED:
+        raise HTTPException(status_code=400, detail="Formato de arquivo não suportado.")
+    return UPLOAD_DIR / name
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
+    file_path = safe_path(file.filename or "")
     contents = await file.read()
-    
     try:
-        # SALVA O ARQUIVO NO DISCO
-        # Usa o nome original do arquivo
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(contents)
-
-        if file.filename.endswith('.csv'):
+        file_path.write_bytes(contents)
+        ext = file_path.suffix.lower()
+        if ext == ".csv":
             df = pd.read_csv(io.BytesIO(contents))
-        elif file.filename.endswith(('.xls', '.xlsx')):
+        elif ext in (".xls", ".xlsx"):
             df = pd.read_excel(io.BytesIO(contents))
-        elif file.filename.endswith('.json'):
-            df = pd.read_json(io.BytesIO(contents))
         else:
-            return {"error": "Formato de arquivo não suportado."}
-
-        columns_info = [{"name": col, "type": str(dtype)} for col, dtype in df.dtypes.items()]
-        preview_data = df.head(4).fillna("").astype(str).values.tolist()
-
-        return {
-            "filename": file.filename,
-            "rows": len(df),
-            "columns_count": len(df.columns),
-            "columns": columns_info,
-            "preview": preview_data,
-            "size_mb": round(len(contents) / (1024 * 1024), 2)
-        }
-        
+            df = pd.read_json(io.BytesIO(contents))
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=422, detail=f"Não foi possível ler o arquivo: {e}")
 
+    return {
+        "filename": file_path.name,
+        "rows": len(df),
+        "columns_count": len(df.columns),
+        "columns": [{"name": c, "type": str(t)} for c, t in df.dtypes.items()],
+        "preview": df.head(4).fillna("").astype(str).values.tolist(),
+        "size_mb": round(len(contents) / (1024 * 1024), 2),
+    }
+        
 
 class ChatRequest(BaseModel):
     filename: str
@@ -81,7 +79,7 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_data(request: ChatRequest):
-    file_path = os.path.join(UPLOAD_DIR, request.filename)
+    file_path = safe_path(request.filename)
     
     # Validação rigorosa com log de depuração
     if not os.path.exists(file_path):
@@ -102,20 +100,19 @@ async def chat_with_data(request: ChatRequest):
         print("Inicializando LangChain...", file=sys.stderr)
         
         llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=os.getenv("GITHUB_TOKEN"),
-            base_url="https://models.inference.ai.azure.com", 
-            temperature=0.1 
+            model=os.getenv("LLM_MODEL", "gemini-2.5-flash"),
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
+            temperature=0.1,
         )
 
-        # Configuração simplificada e mais resiliente do Agente
         agent = create_pandas_dataframe_agent(
             llm,
             df,
-            verbose=True, 
+            verbose=True,
             allow_dangerous_code=True,
-            handle_parsing_errors=True # Crucial: evita que o agente quebre silenciosamente
-            # Removido o agent_type="openai-tools" para forçar o fallback seguro
+            max_iterations=6,                                        # evita estourar o limite do plano gratuito
+            agent_executor_kwargs={"handle_parsing_errors": True},
         )
 
         print(f"Enviando pergunta: '{request.question}'", file=sys.stderr)

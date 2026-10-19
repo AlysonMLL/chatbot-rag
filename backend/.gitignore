@@ -3,3 +3,8 @@ venv/
 .env
 __pycache__
 uploads/
+
+
+teste_http.py
+teste_llm.py
+teste_probe.py
