@@ -55,7 +55,7 @@ export default function ChatInterface({ fileId, fileName }: { fileId: string; fi
     setIsTyping(true);
 
     try {
-      const response = await fetch('`${API_URL}/api/chat`', {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

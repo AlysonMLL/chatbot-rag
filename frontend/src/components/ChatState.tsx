@@ -4,7 +4,7 @@ import ChatInterface from './ChatInterface';
 import type { UploadInfo } from '@/types';
 
 type ChatStateProps = {
-  fileName: UploadInfo;
+  file: UploadInfo;
   onReset: () => void;
 };
 
