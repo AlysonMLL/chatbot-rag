@@ -174,3 +174,7 @@ def chat_with_data(request: ChatRequest):
 def delete_file(file_id: str):
     store.remover(file_id)
     return {"ok": True}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
