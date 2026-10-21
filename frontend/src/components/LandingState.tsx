@@ -162,16 +162,14 @@ const handleFile = useCallback(async (file: File) => {
             <div className="grid grid-cols-2 gap-x-12 gap-y-8 text-sm sm:grid-cols-3">
               
               {/* Navegação da Landing */}
-              <div>
-                <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-purple-400">
-                  Navegação
-                </h4>
-                <ul className="space-y-2.5 text-xs">
-                  <li><a href="#recursos" className="text-gray-400 hover:text-white transition-colors">Recursos</a></li>
-                  <li><a href="#como-funciona" className="text-gray-400 hover:text-white transition-colors">Como funciona</a></li>
-                  <li><a href="#duvidas" className="text-gray-400 hover:text-white transition-colors">Dúvidas frequentes</a></li>
-                </ul>
-              </div>
+              <FooterColumn
+                title="Navegação"
+                links={[
+                  { label: 'Recursos', href: '#recursos' },
+                  { label: 'Como funciona', href: '#como-funciona' },
+                  { label: 'Dúvidas frequentes', href: '#duvidas' },
+                ]}
+              />
 
               {/* Stack do Projeto */}
               <div>
@@ -237,8 +235,8 @@ function FeatureRow({ eyebrow, title, description, checks, visual, reverse = fal
   return <article className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-20 ${reverse ? 'lg:flex-row-reverse' : ''}`}><div className={reverse ? 'lg:order-2' : ''}><p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[#7055d6]">{eyebrow}</p><h3 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-[#252832] md:text-4xl">{title}</h3><p className="mt-5 max-w-lg text-base leading-relaxed text-[#6c707b]">{description}</p><ul className="mt-7 space-y-3">{checks.map((check) => <FeatureCheck key={check}>{check}</FeatureCheck>)}</ul></div><div className={reverse ? 'lg:order-1' : ''}>{visual}</div></article>;
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
-  return <div><h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/70">{title}</h4><ul className="space-y-3">{links.map((link) => <li key={link}><a href="#" className="text-sm text-gray-500 transition-colors hover:text-white">{link}</a></li>)}</ul></div>;
+function FooterColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+  return <div><h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-purple-400">{title}</h4><ul className="space-y-2.5 text-xs">{links.map((link) => <li key={`${link.href}-${link.label}`}><a href={link.href} className="text-gray-400 transition-colors hover:text-white">{link.label}</a></li>)}</ul></div>;
 }
 
 function GithubIcon({ className }: { className?: string }) {
