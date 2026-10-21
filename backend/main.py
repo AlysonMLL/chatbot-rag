@@ -3,7 +3,8 @@ TabulaRAG - Backend (FastAPI)
 
 Fluxo:
   1. POST /api/upload   -> lê o arquivo, consolida se necessário e guarda na RAM (file_id).
-  2. POST /api/chat     -> agente do pandas (LangChain) responde sobre o arquivo do file_id.
+  2. POST /api/chat     -> o modelo gera código pandas, ele é validado e executado em processo
+                           separado, e o modelo explica o resultado (veja analise.py).
   3. DELETE /api/files/{file_id} -> libera a memória quando o usuário troca de arquivo.
 
 LLM: Gemini (via API compatível com a OpenAI), configurado pelo .env (LLM_*).
@@ -19,10 +20,9 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
+from analise import AnaliseFalhou, LLMIndisponivel, responder_pergunta
 from preparo import gerar_contexto, preparar_dataframe
 from sessoes import SessaoStore
 
@@ -40,6 +40,12 @@ store = SessaoStore(
     ttl_segundos=SESSAO_TTL_MIN * 60,
     max_sessoes=MAX_SESSOES,
     limite_mb_total=MAX_MEMORIA_MB,
+)
+
+print(
+    f"[config] sessões: TTL={SESSAO_TTL_MIN} min | máx={MAX_SESSOES} | memória máx={MAX_MEMORIA_MB} MB "
+    f"| upload máx={MAX_UPLOAD_MB} MB",
+    file=sys.stderr,
 )
 
 app = FastAPI(title="TabulaRAG API")
@@ -70,41 +76,6 @@ def extensao_valida(nome: str) -> str:
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Formato de arquivo não suportado. Use CSV, XLS, XLSX ou JSON.")
     return ext
-
-
-def corrigir_formato(_erro) -> str:
-    return (
-        "Formato inválido. Responda SEMPRE em um destes dois formatos, sem blocos de código com crases:\n"
-        "(1) para executar código:\n"
-        "Thought: <o que vou verificar>\n"
-        "Action: python_repl_ast\n"
-        "Action Input: <uma linha de código Python, sem crases>\n"
-        "(2) quando já tiver o resultado:\n"
-        "Thought: I now know the final answer\n"
-        "Final Answer: <resposta completa em português>"
-    )
-
-
-def criar_agente(df: pd.DataFrame, modelo: str, contexto: str):
-    llm = ChatOpenAI(
-        model=modelo,
-        api_key=os.getenv("LLM_API_KEY"),
-        base_url=os.getenv("LLM_BASE_URL"),
-        temperature=0.1,
-        timeout=60,
-        max_retries=1,
-    )
-    return create_pandas_dataframe_agent(
-        llm,
-        df,
-        verbose=True,
-        allow_dangerous_code=True,
-        prefix=contexto,
-        max_iterations=10,
-        max_execution_time=90,
-        number_of_head_rows=3,
-        agent_executor_kwargs={"handle_parsing_errors": corrigir_formato},
-    )
 
 
 # ----------------------------------------------------------------------- rotas
@@ -160,6 +131,11 @@ def upload_file(file: UploadFile = File(...)):
 def chat_with_data(request: ChatRequest):
     sessao = store.obter(request.file_id)
     if sessao is None:
+        print(
+            f"ERRO 404: sessão {request.file_id[:8]}... ausente: {store.motivo_ausencia(request.file_id)} "
+            f"| sessões ativas: {len(store)}",
+            file=sys.stderr,
+        )
         raise HTTPException(
             status_code=404,
             detail="Sessão expirada ou arquivo não encontrado. Envie o arquivo novamente.",
@@ -174,37 +150,24 @@ def chat_with_data(request: ChatRequest):
         historico = (
             "Histórico recente da conversa (use para entender perguntas de acompanhamento):\n"
             + "\n".join(linhas)
-            + "\n\nPergunta atual: "
+            + "\n\n"
         )
-    pergunta = historico + request.question
 
     try:
-        modelos = [m for m in (os.getenv("LLM_MODEL"), os.getenv("LLM_MODEL_FALLBACK")) if m]
-        final_answer = None
-        for modelo in modelos:
-            try:
-                # df.copy(): o código gerado pelo modelo não pode estragar os dados da sessão
-                resultado = criar_agente(sessao.df.copy(), modelo, sessao.contexto).invoke(pergunta)
-                saida = resultado.get("output") if isinstance(resultado, dict) else str(resultado)
-                if not saida or "Agent stopped" in saida:
-                    raise RuntimeError("O agente não conseguiu concluir a resposta.")
-                final_answer = saida
-                break
-            except Exception as e:
-                print(f"Modelo {modelo} falhou: {e}", file=sys.stderr)
-
-        if final_answer is None:
-            raise HTTPException(
-                status_code=503,
-                detail="O serviço de IA está sobrecarregado ou não conseguiu responder. Tente novamente em instantes.",
-            )
-        return {"answer": final_answer}
-
-    except HTTPException:
-        raise
+        resultado = responder_pergunta(sessao.df, sessao.contexto, request.question, historico)
+    except LLMIndisponivel:
+        raise HTTPException(
+            status_code=503,
+            detail="O serviço de IA está sobrecarregado ou indisponível. Tente novamente em instantes.",
+        )
+    except AnaliseFalhou as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
-        raise HTTPException(status_code=500, detail=f"Erro interno do servidor IA: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno do servidor: {e}")
+
+    store.obter(request.file_id)  # renova o prazo da sessão ao terminar a resposta
+    return resultado  # {"answer": ..., "code": ...}
 
 
 @app.delete("/api/files/{file_id}")

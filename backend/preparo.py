@@ -10,11 +10,6 @@ Preparação do DataFrame antes de enviar ao agente.
 import pandas as pd
 
 
-def _escapar_chaves(texto: str) -> str:
-    # O prompt do LangChain usa {variavel}; chaves literais precisam ser duplicadas.
-    return texto.replace("{", "{{").replace("}", "}}")
-
-
 def _achar_chave_e_particao(df: pd.DataFrame):
     n = len(df)
     num_cols = df.select_dtypes("number").columns.tolist()
@@ -93,7 +88,7 @@ def preparar_dataframe(df: pd.DataFrame):
 
 def gerar_contexto(df: pd.DataFrame, aviso: str | None = None) -> str:
     linhas = [
-        "You are working with a pandas dataframe in Python. The name of the dataframe is `df`.",
+        "Os dados estão em um DataFrame do pandas chamado `df`.",
         f"Dataset: {len(df)} linhas x {df.shape[1]} colunas.",
     ]
     categoricas = []
@@ -119,4 +114,4 @@ def gerar_contexto(df: pd.DataFrame, aviso: str | None = None) -> str:
         "- Em rankings com empate na última posição, avise quem mais empatou (ex.: 'há mais N com o mesmo valor').",
         "- Médias, somas e contagens ignoram nulos: diga em quantas linhas havia dado, em vez de afirmar que usou todas.",
     ]
-    return _escapar_chaves("\n".join(linhas))
+    return "\n".join(linhas)

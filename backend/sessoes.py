@@ -11,6 +11,7 @@ Armazenamento em memória (RAM) dos arquivos enviados, no lugar da pasta uploads
 import threading
 import time
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass
 
 import pandas as pd
@@ -33,13 +34,21 @@ class SessaoStore:
         self._limite_bytes = limite_mb_total * 1024 * 1024
         self._relogio = relogio
         self._sessoes: dict[str, Sessao] = {}
+        self._motivos: OrderedDict[str, str] = OrderedDict()  # por que cada ID saiu (últimos 200)
         self._lock = threading.Lock()
 
     # -- internos (chamar com o lock já adquirido) ---------------------------
+    def _registrar_saida(self, file_id: str, motivo: str) -> None:
+        self._motivos[file_id] = motivo
+        while len(self._motivos) > 200:
+            self._motivos.popitem(last=False)
+
     def _remover_expiradas(self) -> None:
         agora = self._relogio()
         for fid in [f for f, s in self._sessoes.items() if agora - s.ultimo_uso > self._ttl]:
+            ocioso = agora - self._sessoes[fid].ultimo_uso
             del self._sessoes[fid]
+            self._registrar_saida(fid, f"expirou (ficou {ocioso:.0f}s sem uso; TTL = {self._ttl}s)")
 
     def _total_bytes(self) -> int:
         return sum(s.bytes_usados for s in self._sessoes.values())
@@ -47,6 +56,7 @@ class SessaoStore:
     def _remover_menos_usada(self) -> None:
         fid = min(self._sessoes, key=lambda f: self._sessoes[f].ultimo_uso)
         del self._sessoes[fid]
+        self._registrar_saida(fid, "descartada para abrir espaço (limite de sessões ou de memória)")
 
     # -- API pública ---------------------------------------------------------
     def criar(self, df: pd.DataFrame, contexto: str, nome: str) -> str:
@@ -75,7 +85,17 @@ class SessaoStore:
 
     def remover(self, file_id: str) -> bool:
         with self._lock:
-            return self._sessoes.pop(file_id, None) is not None
+            existia = self._sessoes.pop(file_id, None) is not None
+            if existia:
+                self._registrar_saida(file_id, "removida pelo usuário (Novo Arquivo)")
+            return existia
+
+    def motivo_ausencia(self, file_id: str) -> str:
+        with self._lock:
+            return self._motivos.get(
+                file_id,
+                "ID desconhecido neste processo (servidor reiniciado ou outro processo respondendo?)",
+            )
 
     def __len__(self) -> int:
         with self._lock:
