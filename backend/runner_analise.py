@@ -4,6 +4,7 @@ Executa o código gerado pelo modelo em um PROCESSO SEPARADO (iniciado por anali
 Lê um pickle do stdin ({"df": DataFrame, "code": str}), executa o código com builtins
 restritos e devolve um JSON na saída padrão, depois do marcador @@RESULTADO@@.
 """
+
 import builtins
 import contextlib
 import io

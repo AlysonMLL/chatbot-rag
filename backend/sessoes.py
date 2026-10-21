@@ -8,6 +8,7 @@ Armazenamento em memória (RAM) dos arquivos enviados, no lugar da pasta uploads
 - Atenção: funciona com UM processo (um worker do uvicorn). Com vários workers,
   cada um teria a sua própria memória.
 """
+
 import threading
 import time
 import uuid
@@ -34,10 +35,10 @@ class SessaoStore:
         self._limite_bytes = limite_mb_total * 1024 * 1024
         self._relogio = relogio
         self._sessoes: dict[str, Sessao] = {}
-        self._motivos: OrderedDict[str, str] = OrderedDict()  # por que cada ID saiu (últimos 200)
+        self._motivos: OrderedDict[str, str] = OrderedDict()  
         self._lock = threading.Lock()
 
-    # -- internos (chamar com o lock já adquirido) ---------------------------
+    # -- internos (chamar com o lock já adquirido)
     def _registrar_saida(self, file_id: str, motivo: str) -> None:
         self._motivos[file_id] = motivo
         while len(self._motivos) > 200:

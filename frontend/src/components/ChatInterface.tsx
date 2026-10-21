@@ -6,63 +6,76 @@
 
 Função do arquivo: Interface de Interação Analítica.
 É o componente central da experiência do usuário, onde a linguagem natural é transformada
-em consultas de dados. Ele se comunica de forma assíncrona com o backend, lidando com 
-tempos de resposta dinâmicos do LLM (LangChain) e apresentando os insights retornados.
+em consultas de dados. 
 */
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Table2, TrendingUp, Filter, Calculator } from 'lucide-react';
+
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, FilePlus2, FileText, Search, AlertCircle, BarChart2, Mic, Paperclip, Plus, Send, Sparkles, User } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { API_URL } from '@/config';
 
-type Message = {
-  id: number;
-  role: 'user' | 'assistant';
-  content: string;
-};
+type Message = { id: number; role: 'user' | 'assistant'; content: string };
+type ChatInterfaceProps = { fileId: string; fileName: string };
+type ModelOption = { name: string; provider: string };
 
-const suggestedQuestions = [
-  { icon: TrendingUp, text: 'Qual o total de vendas por região?' },
-  { icon: Filter, text: 'Filtrar pedidos com status "Pendente"' },
-  { icon: Calculator, text: 'Calcular a média de valor por pedido' },
-  { icon: Table2, text: 'Mostrar os 10 maiores clientes' },
+const modelOptions: ModelOption[] = [
+  { name: 'gemini-3.5-flash', provider: 'Google' },
+  { name: 'gemini-3.5-flash-lite', provider: 'Google' },
 ];
 
-export default function ChatInterface({ fileId, fileName }: { fileId: string; fileName: string }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 0,
-      role: 'assistant',
-      content: `Arquivo **${fileName}** carregado e indexado com sucesso! A IA já tem acesso ao seu conteúdo completo na memória. Você pode me perguntar qualquer coisa sobre esses dados — totais, filtros, médias, tendências e muito mais.`,
-    },
-  ]);
+const suggestedQuestions = [
+  { icon: FileText, text: 'Faça um resumo geral sobre os dados deste arquivo.' },
+  { icon: Search, text: 'Quais são as colunas principais e seus tipos?' },
+  { icon: AlertCircle, text: 'Identifique se existem valores nulos ou anomalias.' },
+  { icon: BarChart2, text: 'Quais tendências ou padrões você consegue notar?' },
+];
+
+export default function ChatInterface({ fileId, fileName }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([{ 
+    id: 0, 
+    role: 'assistant', 
+    content: `Arquivo **${fileName}** carregado com sucesso! A IA já tem acesso ao seu conteúdo completo na memória. Você pode me perguntar qualquer coisa sobre esses dados — totais, filtros, médias, tendências e muito mais.` 
+  }]);
+  
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nextId = useRef(1);
 
-  // Auto-scroll para a última mensagem
-  useEffect(() => {
+  // Auto-scroll
+  useEffect(() => { 
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
-  // Função REAL de envio para a API
+  // Função REAL de requisição à API
   const sendMessage = async (text: string) => {
-    const userMsg: Message = { id: nextId.current++, role: 'user', content: text };
+    const cleanText = text.trim();
+    if (!cleanText || isTyping) return;
+    
+    const userMsg: Message = { id: nextId.current++, role: 'user', content: cleanText };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    
+    // Reseta a altura do textarea
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           file_id: fileId,
-          question: text,
+          question: cleanText,
           history: messages.slice(1).map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -73,119 +86,134 @@ export default function ChatInterface({ fileId, fileName }: { fileId: string; fi
       }
 
       const data = await response.json();
-      
-      const assistantMsg: Message = {
-        id: nextId.current++,
-        role: 'assistant',
-        content: data.answer, // a resposta da IA
-      };
-      
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [...prev, { id: nextId.current++, role: 'assistant', content: data.answer }]);
     } catch (error) {
-      console.error(error);
-      const errorMsg: Message = {
-        id: nextId.current++,
-        role: 'assistant',
-        content:
-          error instanceof TypeError
-            ? 'Não consegui conectar ao servidor. Ele está rodando?'
-            : error instanceof Error
-              ? error.message
-              : 'Ocorreu um erro inesperado.',
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      const errorMsg = error instanceof Error ? error.message : 'Ocorreu um erro inesperado.';
+      setMessages((prev) => [...prev, { id: nextId.current++, role: 'assistant', content: errorMsg }]);
     } finally {
       setIsTyping(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isTyping) return;
-    sendMessage(input.trim());
+  const handleSubmit = (event?: React.FormEvent) => { 
+    if (event) event.preventDefault(); 
+    sendMessage(input); 
+  };
+
+  // Auto-resize do textarea
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
   return (
-    <div className="flex-1 flex flex-col glass rounded-2xl overflow-hidden min-h-[calc(100vh-7rem)] max-h-[calc(100vh-7rem)]">
-      {/* Chat header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">TabulaRAG Assistant</h3>
-          <p className="text-xs text-green-400 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Analisando {fileName} via LangChain
-          </p>
+    <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-custom px-4 py-8 md:px-8 lg:px-12">
+        <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end gap-7">
+          {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
+          {isTyping && <TypingIndicator />}
+          
+          {messages.length === 1 && !isTyping && (
+            <div className="animate-fade-in-up pb-4">
+              <p className="mb-3 px-1 text-xs text-gray-500">Experimente perguntar:</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {suggestedQuestions.map((question) => (
+                  <button 
+                    key={question.text} 
+                    onClick={() => sendMessage(question.text)} 
+                    className="flex items-center gap-3 rounded-xl border border-white/10 glass p-3 text-left transition-colors hover:border-purple-500/30 hover:bg-white/10"
+                  >
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5">
+                      <question.icon className="h-4 w-4 text-gray-400" />
+                    </span>
+                    <span className="text-sm text-gray-300">{question.text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-custom px-4 md:px-8 py-6 space-y-6">
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
-
-        {isTyping && (
-          <div className="flex gap-3 animate-fade-in">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div className="glass rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-400 typing-dot" style={{ animationDelay: '0s' }} />
-              <span className="w-2 h-2 rounded-full bg-blue-400 typing-dot" style={{ animationDelay: '0.2s' }} />
-              <span className="w-2 h-2 rounded-full bg-cyan-400 typing-dot" style={{ animationDelay: '0.4s' }} />
-            </div>
-          </div>
-        )}
-
-        {/* Suggested questions (only when few messages) */}
-        {messages.length <= 1 && !isTyping && (
-          <div className="animate-fade-in-up pt-4">
-            <p className="text-xs text-gray-500 mb-3 px-1">Perguntas sugeridas:</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {suggestedQuestions.map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(q.text)}
-                  className="flex items-center gap-3 p-3 rounded-xl glass hover:bg-white/10 hover:border-purple-500/30 transition-all text-left group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-                    <q.icon className="w-4 h-4 text-gray-400 group-hover:text-purple-300 transition-colors" />
-                  </div>
-                  <span className="text-sm text-gray-300">{q.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <div className="p-4 border-t border-white/5">
-        <form onSubmit={handleSubmit} className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+      <div className="w-full flex-shrink-0 px-4 pb-4 pt-2 md:px-8 md:pb-6">
+        <div className="mx-auto max-w-4xl">
+          <form onSubmit={handleSubmit} className="relative rounded-2xl border border-white/10 bg-[#1b1b22] shadow-2xl transition-colors focus-within:border-purple-500/50">
+            <textarea 
+              ref={textareaRef}
+              value={input} 
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
               disabled={isTyping}
-              placeholder={isTyping ? "Aguarde a IA responder..." : "Pergunte algo sobre seus dados (ex: 'Me mostre a soma de...')..."}
-              className="w-full bg-white/5 border border-white/10 focus:border-purple-500/50 rounded-xl px-5 py-3.5 text-sm text-white placeholder-gray-500 outline-none transition-colors disabled:opacity-50"
+              rows={1}
+              placeholder={isTyping ? "Aguarde a IA responder..." : "Pergunte algo sobre seus dados (ex: 'Me mostre a soma de...')..."} 
+              className="w-full resize-none bg-transparent px-5 pb-16 pt-5 text-sm text-white outline-none placeholder:text-gray-500 scrollbar-custom disabled:opacity-50" 
+              style={{ maxHeight: '200px' }}
             />
-          </div>
-          <button
-            type="submit"
-            disabled={!input.trim() || isTyping}
-            className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Send className="w-4 h-4 text-white" />
-          </button>
-        </form>
-        <p className="text-xs text-gray-600 mt-2 text-center">
-          TabulaRAG usa IA e pode cometer erros. Verifique os cálculos críticos.
-        </p>
+            
+            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                {/* Menu Anexos (Em Breve) */}
+                <div className="relative">
+                  <button type="button" onClick={() => { setIsAttachMenuOpen(!isAttachMenuOpen); setIsModelMenuOpen(false); }} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/10 hover:text-white" aria-label="Adicionar arquivo">
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  {isAttachMenuOpen && (
+                    <div className="absolute bottom-12 left-0 z-30 w-56 rounded-xl border border-white/10 bg-[#202027] p-1.5 shadow-2xl animate-fade-in-up">
+                      <button disabled type="button" className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs text-gray-400 opacity-60 cursor-not-allowed">
+                        <span className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5" /> Anexar arquivo</span>
+                        <span className="text-[9px] uppercase tracking-wider text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">Em breve</span>
+                      </button>
+                      <button disabled type="button" className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs text-gray-400 opacity-60 cursor-not-allowed mt-1">
+                        <span className="flex items-center gap-2"><FilePlus2 className="h-3.5 w-3.5" /> Adicionar contexto</span>
+                        <span className="text-[9px] uppercase tracking-wider text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">Em breve</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Menu Modelos */}
+                <div className="relative">
+                  <button type="button" onClick={() => { setIsModelMenuOpen(!isModelMenuOpen); setIsAttachMenuOpen(false); }} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white">
+                    <span className="max-w-[145px] truncate">{selectedModel.name}</span>
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isModelMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isModelMenuOpen && (
+                    <div className="absolute bottom-12 left-0 z-30 w-64 rounded-xl border border-white/10 bg-[#202027] p-1.5 shadow-2xl animate-fade-in-up">
+                      <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">Modelo de IA</p>
+                      {modelOptions.map((model) => (
+                        <button type="button" key={model.name} onClick={() => { setSelectedModel(model); setIsModelMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-colors hover:bg-white/10 ${selectedModel.name === model.name ? 'bg-purple-500/10 text-purple-300 font-medium' : 'text-gray-300'}`}>
+                          <span>{model.name}</span>
+                          <span className="text-[10px] text-gray-600">{model.provider}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Controles da Direita */}
+              <div className="flex items-center gap-2">
+                <button disabled type="button" className="hidden h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-white/10 hover:text-white sm:flex opacity-50 cursor-not-allowed" title="Em breve" aria-label="Usar microfone">
+                  <Mic className="h-4 w-4" />
+                </button>
+                <button type="submit" onClick={() => handleSubmit()} disabled={!input.trim() || isTyping} className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Enviar mensagem">
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </form>
+          <p className="mt-3 text-center text-xs text-gray-600">TabulaRAG pode cometer erros. Verifique os cálculos críticos em seu dataset original.</p>
+        </div>
       </div>
     </div>
   );
@@ -193,54 +221,66 @@ export default function ChatInterface({ fileId, fileName }: { fileId: string; fi
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
-
   return (
-    <div className={`flex gap-3 animate-fade-in-up ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-        isUser
-          ? 'bg-white/10'
-          : 'bg-gradient-to-br from-purple-500 to-blue-600'
-      }`}>
-        {isUser ? <User className="w-4 h-4 text-gray-300" /> : <Sparkles className="w-4 h-4 text-white" />}
+    <div className={`flex gap-4 animate-fade-in-up ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg mt-1 ${isUser ? 'bg-white/10' : 'bg-gradient-to-br from-purple-500 to-blue-600'}`}>
+        {isUser ? <User className="h-4 w-4 text-gray-300" /> : <Sparkles className="h-4 w-4 text-white" />}
       </div>
-      <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed ${
-        isUser
-          ? 'bg-white/10 rounded-2xl rounded-tr-sm'
-          : 'glass rounded-2xl rounded-tl-sm'
-      }`}>
+      <div className={`max-w-[85%] text-sm leading-relaxed overflow-x-hidden ${isUser ? 'rounded-2xl rounded-tr-sm bg-white/10 px-5 py-3' : 'pt-1.5'}`}>
         <FormattedContent content={message.content} />
       </div>
     </div>
   );
 }
 
-function FormattedContent({ content }: { content: string }) {
-  const lines = content.split('\n');
+function TypingIndicator() {
   return (
-    <div className="space-y-1">
-      {lines.map((line, i) => {
-        if (line.trim() === '') return <div key={i} className="h-1" />;
-        // Detecção de tabelas Markdown
-        if (line.startsWith('|')) return <div key={i} className="font-mono text-xs text-gray-300 overflow-x-auto scrollbar-custom whitespace-pre bg-black/20 p-2 rounded-md my-2">{line}</div>;
-        
-        // Renderização simples de negrito
-        const boldMatch = line.match(/\*\*(.+?)\*\*/);
-        if (boldMatch) {
-          const parts = line.split(/\*\*(.+?)\*\*/);
-          return (
-            <p key={i}>
-              {parts.map((part, j) => j % 2 === 1 ? <strong key={j} className="font-semibold text-white">{part}</strong> : part)}
-            </p>
+    <div className="flex gap-4 animate-fade-in">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg mt-1 bg-gradient-to-br from-purple-500 to-blue-600">
+        <Sparkles className="h-4 w-4 text-white" />
+      </div>
+      <div className="flex items-center gap-1.5 pt-3">
+        <span className="typing-dot h-2 w-2 rounded-full bg-purple-400" />
+        <span className="typing-dot h-2 w-2 rounded-full bg-blue-400" style={{ animationDelay: '0.2s' }} />
+        <span className="typing-dot h-2 w-2 rounded-full bg-cyan-400" style={{ animationDelay: '0.4s' }} />
+      </div>
+    </div>
+  );
+}
+
+function FormattedContent({ content }: { content: string }) {
+  return (
+    <div className="space-y-4">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+        table: ({node, ...props}) => (
+          <div className="overflow-x-auto scrollbar-custom my-4 rounded-lg border border-white/10 bg-black/20">
+            <table className="min-w-full divide-y divide-white/10 text-xs" {...props} />
+          </div>
+        ),
+        thead: ({node, ...props}) => <thead className="bg-white/5" {...props} />,
+        th: ({node, ...props}) => <th className="px-4 py-3 text-left font-medium text-gray-300 uppercase tracking-wider" {...props} />,
+        td: ({node, ...props}) => <td className="px-4 py-3 whitespace-nowrap text-gray-400 border-b border-white/5" {...props} />,
+        p: ({node, ...props}) => <p className="text-gray-300 leading-relaxed" {...props} />,
+        a: ({node, ...props}) => <a className="text-purple-400 hover:text-purple-300 hover:underline transition-colors" {...props} />,
+        strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
+        ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-2 text-gray-300 marker:text-gray-500" {...props} />,
+        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-2 text-gray-300 marker:text-gray-500" {...props} />,
+        code: ({node, className, children, ...props}: any) => {
+          const isInline = !String(children).includes('\n');
+          return isInline ? (
+            <code className="bg-white/10 text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>{children}</code>
+          ) : (
+            <div className="bg-black/30 rounded-lg p-4 overflow-x-auto border border-white/10 my-4">
+              <code className="text-sm font-mono text-gray-300" {...props}>{children}</code>
+            </div>
           );
         }
-        
-        // Renderização de listas (bullets)
-        if (line.trim().startsWith('-') || line.trim().startsWith('* ') || line.trim().match(/^\d+\./)) {
-           return <p key={i} className="text-gray-300 pl-4">{line}</p>;
-        }
-        
-        return <p key={i} className="text-gray-300">{line}</p>;
-      })}
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }

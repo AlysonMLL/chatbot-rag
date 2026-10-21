@@ -36,7 +36,7 @@ class AnaliseFalhou(Exception):
     """Não foi possível gerar/executar um código válido; a mensagem é segura para o usuário."""
 
 
-# --------------------------------------------------------------------- validação
+# ------------------------------------------------------------------- validação
 NOS_PERMITIDOS = (
     ast.Module, ast.Expr, ast.Assign, ast.AugAssign, ast.Name, ast.Load, ast.Store, ast.Constant,
     ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare, ast.Call, ast.keyword, ast.Attribute,
@@ -104,7 +104,7 @@ def validar_codigo(codigo: str) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------------- execução
+# ---------------------------------------- execução
 def _ambiente_limpo() -> dict[str, str]:
     """Ambiente mínimo para o processo filho: sem chaves de API nem outras variáveis."""
     manter = ("SYSTEMROOT", "PATH", "TEMP", "TMP", "LANG", "LC_ALL")

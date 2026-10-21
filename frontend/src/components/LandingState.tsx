@@ -146,7 +146,89 @@ const handleFile = useCallback(async (file: File) => {
         <div className="mx-auto max-w-3xl"><div className="mb-10 text-center"><p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[#7055d6]">Dúvidas frequentes</p><h2 className="text-3xl font-bold tracking-tight text-[#252832] md:text-4xl">Tudo claro antes de começar.</h2></div><div className="space-y-3">{faqItems.map((item, index) => { const isOpen = openFaq === index; return <div key={item.question} className={`rounded-2xl border transition-colors ${isOpen ? 'border-[#c9bff5] bg-white/70' : 'border-black/10 bg-white/35'}`}><button onClick={() => setOpenFaq(isOpen ? null : index)} className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left text-sm font-semibold text-[#30333c] md:px-6"><span>{item.question}</span><ChevronDown className={`h-5 w-5 shrink-0 text-[#7055d6] transition-transform ${isOpen ? 'rotate-180' : ''}`} /></button>{isOpen && <p className="max-w-2xl px-5 pb-5 text-sm leading-relaxed text-[#676b76] md:px-6">{item.answer}</p>}</div>; })}</div></div>
       </section>
 
-      <footer className="bg-[#0a0a0f] px-6 py-12 text-white md:px-12 md:py-16"><div className="mx-auto max-w-7xl"><div className="flex flex-col justify-between gap-10 md:flex-row"><div><img src="/TabulaRAG_Branco.png" alt="TabulaRAG" className="h-18 w-auto object-contain" /><p className="mt-4 max-w-xs text-sm leading-relaxed text-gray-500">Dados complexos, conversas simples.</p></div><div className="grid grid-cols-2 gap-x-16 gap-y-8 text-sm sm:grid-cols-3"><FooterColumn title="Produto" links={['Recursos', 'Como funciona', 'Perguntas frequentes']} /><FooterColumn title="Recursos" links={['Documentação', 'Notas de versão', 'Contato']} /><FooterColumn title="Legal" links={['Privacidade', 'Termos de uso']} /></div></div><div className="mt-12 border-t border-white/10 pt-6 text-xs text-gray-600">© 2026 TabulaRAG. Feito para transformar dados em clareza.</div></div></footer>
+      <footer className="bg-[#0a0a0f] border-t border-white/5 px-6 py-12 text-white md:px-12 md:py-16">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col justify-between gap-10 md:flex-row">
+            
+            {/* Coluna 1: Logo e Descrição */}
+            <div className="max-w-xs">
+              <img src="/TabulaRAG_Branco.png" alt="TabulaRAG" className="h-14 w-auto object-contain pr-12" />
+              <p className="mt-4 text-xs leading-relaxed text-gray-400">
+                Mini RAG / Chatbot analítico para dados tabulares com execução segura de código Pandas e IA.
+              </p>
+            </div>
+
+            {/* Coluna 2, 3 e 4: Links Reais */}
+            <div className="grid grid-cols-2 gap-x-12 gap-y-8 text-sm sm:grid-cols-3">
+              
+              {/* Navegação da Landing */}
+              <div>
+                <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-purple-400">
+                  Navegação
+                </h4>
+                <ul className="space-y-2.5 text-xs">
+                  <li><a href="#recursos" className="text-gray-400 hover:text-white transition-colors">Recursos</a></li>
+                  <li><a href="#como-funciona" className="text-gray-400 hover:text-white transition-colors">Como funciona</a></li>
+                  <li><a href="#duvidas" className="text-gray-400 hover:text-white transition-colors">Dúvidas frequentes</a></li>
+                </ul>
+              </div>
+
+              {/* Stack do Projeto */}
+              <div>
+                <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-purple-400">
+                  Tecnologias
+                </h4>
+                <ul className="space-y-2.5 text-xs text-gray-400">
+                  <li>FastAPI & Python</li>
+                  <li>Pandas & AST Safety</li>
+                  <li>Google Gemini 3.5</li>
+                  <li>React 19 & Tailwind v4</li>
+                </ul>
+              </div>
+
+              {/* Links de Desenvolvedor */}
+              <div>
+                <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-purple-400">
+                  Projeto & Autor
+                </h4>
+                <ul className="space-y-2.5 text-xs">
+                  <li>
+                    <a 
+                      href="https://github.com/AlysonMLL/chatbot-rag" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <GithubIcon className="h-3.5 w-3.5 text-white" />
+                      Repositório GitHub
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="https://linkedin.com/in/alysonmll" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <LinkedinIcon className="h-3.5 w-3.5 text-blue-400" />
+                      LinkedIn
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Linha Final */}
+          <div className="mt-12 border-t border-white/5 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
+            <p>© 2026 TabulaRAG.</p>
+            <p className="flex items-center gap-1">
+              Desenvolvido com foco em RAG seguro para Análise de Dados
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -157,4 +239,23 @@ function FeatureRow({ eyebrow, title, description, checks, visual, reverse = fal
 
 function FooterColumn({ title, links }: { title: string; links: string[] }) {
   return <div><h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-white/70">{title}</h4><ul className="space-y-3">{links.map((link) => <li key={link}><a href="#" className="text-sm text-gray-500 transition-colors hover:text-white">{link}</a></li>)}</ul></div>;
+}
+
+function GithubIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.24c3-.81 5.5-4.14 5.5-8.76a5.2 5.2 0 0 0-1.5-3.78c.15-.45.34-2.26-.32-3.72C15 2 12.5 4 12.5 4a10.5 10.5 0 0 0-5 0C5 4 2.5 2 2.5 2c-.66 1.46-.47 3.27-.32 3.72A5.2 5.2 0 0 0 1 9.24c0 4.62 2.5 7.95 5.5 8.76a4.8 4.8 0 0 0-1 3.24v4" />
+      <path d="M9 18c-4.51 2-5-2-7-2" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+      <rect width="4" height="12" x="2" y="9" />
+      <circle cx="4" cy="4" r="2" />
+    </svg>
+  );
 }
