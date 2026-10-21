@@ -2,7 +2,6 @@ venv/
 .venv/
 .env
 __pycache__
-uploads/
 
 
 teste_http.py

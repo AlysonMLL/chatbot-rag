@@ -12,6 +12,7 @@ tempos de resposta dinâmicos do LLM (LangChain) e apresentando os insights reto
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, User, Table2, TrendingUp, Filter, Calculator } from 'lucide-react';
+import { API_URL } from '@/config';
 
 type Message = {
   id: number;
@@ -26,7 +27,7 @@ const suggestedQuestions = [
   { icon: Table2, text: 'Mostrar os 10 maiores clientes' },
 ];
 
-export default function ChatInterface({ fileName }: { fileName: string }) {
+export default function ChatInterface({ fileId, fileName }: { fileId: string; fileName: string }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
@@ -54,13 +55,13 @@ export default function ChatInterface({ fileName }: { fileName: string }) {
     setIsTyping(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch('`${API_URL}/api/chat`', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          filename: fileName,
+          file_id: fileId,
           question: text,
           history: messages.slice(1).map((m) => ({ role: m.role, content: m.content })),
         }),

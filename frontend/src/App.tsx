@@ -1,24 +1,23 @@
 import { useState } from 'react';
 import LandingState from '@/components/LandingState';
 import ChatState from '@/components/ChatState';
+import { API_URL } from '@/config';
+import type { UploadInfo } from '@/types';
 
 export default function App() {
-  const [stage, setStage] = useState<'landing' | 'chat'>('landing');
-  const [fileName, setFileName] = useState('');
-
-  const handleFileUploaded = (name: string) => {
-    setFileName(name);
-    setStage('chat');
-  };
+  const [file, setFile] = useState<UploadInfo | null>(null);
 
   const handleReset = () => {
-    setStage('landing');
-    setFileName('');
+    // Libera a memória do servidor; se falhar, a sessão expira sozinha.
+    if (file) {
+      fetch(`${API_URL}/api/files/${file.file_id}`, { method: 'DELETE' }).catch(() => {});
+    }
+    setFile(null);
   };
 
-  if (stage === 'chat') {
-    return <ChatState fileName={fileName} onReset={handleReset} />;
+  if (file) {
+    return <ChatState file={file} onReset={handleReset} />;
   }
 
-  return <LandingState onFileUploaded={handleFileUploaded} />;
+  return <LandingState onFileUploaded={setFile} />;
 }

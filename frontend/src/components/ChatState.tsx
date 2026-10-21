@@ -1,13 +1,14 @@
 import { Table2, Plus } from 'lucide-react';
 import FilePanel from './FilePanel';
 import ChatInterface from './ChatInterface';
+import type { UploadInfo } from '@/types';
 
 type ChatStateProps = {
-  fileName: string;
+  fileName: UploadInfo;
   onReset: () => void;
 };
 
-export default function ChatState({ fileName, onReset }: ChatStateProps) {
+export default function ChatState({ file, onReset }: ChatStateProps) {
   return (
     <div className="min-h-screen bg-[#0a0a0f] bg-grid relative overflow-hidden">
       {/* Ambient glow */}
@@ -37,8 +38,8 @@ export default function ChatState({ fileName, onReset }: ChatStateProps) {
       {/* Main content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 pb-6">
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <FilePanel fileName={fileName} />
-          <ChatInterface fileName={fileName} />
+            <FilePanel file={file} />
+            <ChatInterface fileId={file.file_id} fileName={file.filename} />
         </div>
       </div>
     </div>

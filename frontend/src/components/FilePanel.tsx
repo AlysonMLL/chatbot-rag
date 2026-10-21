@@ -1,38 +1,18 @@
-import { FileSpreadsheet, Database, Columns3, Rows3, Hash, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileSpreadsheet, Database, Columns3, Rows3, Hash, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { useState } from 'react';
+import type { UploadInfo } from '@/types';
 
 type FilePanelProps = {
-  fileName: string;
+  file: UploadInfo;
 };
 
-type ColumnInfo = {
-  name: string;
-  type: string;
-};
-
-const mockColumns: ColumnInfo[] = [
-  { name: 'id', type: 'int' },
-  { name: 'customer_name', type: 'varchar' },
-  { name: 'email', type: 'varchar' },
-  { name: 'order_date', type: 'date' },
-  { name: 'product_category', type: 'varchar' },
-  { name: 'quantity', type: 'int' },
-  { name: 'unit_price', type: 'decimal' },
-  { name: 'total_amount', type: 'decimal' },
-  { name: 'status', type: 'varchar' },
-  { name: 'region', type: 'varchar' },
-];
-
-const mockPreviewRows = [
-  ['1001', 'Maria Silva', 'maria@email.com', '2024-01-15', 'Eletrônicos', '3', '299.90', '899.70', 'Entregue', 'Sudeste'],
-  ['1002', 'João Costa', 'joao@email.com', '2024-01-16', 'Vestuário', '2', '89.50', '179.00', 'Pendente', 'Sul'],
-  ['1003', 'Ana Souza', 'ana@email.com', '2024-01-17', 'Livros', '5', '24.90', '124.50', 'Entregue', 'Norte'],
-  ['1004', 'Pedro Lima', 'pedro@email.com', '2024-01-18', 'Eletrônicos', '1', '1599.00', '1599.00', 'Enviado', 'Nordeste'],
-];
-
-export default function FilePanel({ fileName }: FilePanelProps) {
+export default function FilePanel({ file }: FilePanelProps) {
   const [showColumns, setShowColumns] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+
+  const previewColumns = file.columns.slice(0, 5);
+  const previewRows = file.preview.map((row) => row.slice(0, 5));
+  const sizeLabel = file.size_mb < 0.01 ? '< 0,01 MB' : `${file.size_mb.toLocaleString('pt-BR')} MB`;
 
   return (
     <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0 glass-strong rounded-2xl flex flex-col max-h-[calc(100vh-7rem)] overflow-hidden animate-slide-in">
@@ -43,7 +23,7 @@ export default function FilePanel({ fileName }: FilePanelProps) {
             <FileSpreadsheet className="w-5 h-5 text-green-400" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-sm truncate">{fileName}</h3>
+            <h3 className="font-semibold text-sm truncate">{file.filename}</h3>
             <p className="text-xs text-gray-500">Arquivo carregado</p>
           </div>
         </div>
@@ -57,14 +37,14 @@ export default function FilePanel({ fileName }: FilePanelProps) {
               <Rows3 className="w-3.5 h-3.5" />
               <span className="text-xs">Linhas</span>
             </div>
-            <p className="text-lg font-bold text-gradient">12,847</p>
+            <p className="text-lg font-bold text-gradient">{file.rows.toLocaleString('pt-BR')}</p>
           </div>
           <div className="glass rounded-xl p-3">
             <div className="flex items-center gap-2 text-gray-500 mb-1">
               <Columns3 className="w-3.5 h-3.5" />
               <span className="text-xs">Colunas</span>
             </div>
-            <p className="text-lg font-bold text-gradient">10</p>
+            <p className="text-lg font-bold text-gradient">{file.columns_count.toLocaleString('pt-BR')}</p>
           </div>
         </div>
 
@@ -74,9 +54,16 @@ export default function FilePanel({ fileName }: FilePanelProps) {
           </div>
           <div>
             <p className="text-xs text-gray-500">Tamanho</p>
-            <p className="text-sm font-semibold">2.4 MB</p>
+            <p className="text-sm font-semibold">{sizeLabel}</p>
           </div>
         </div>
+
+        {file.note && (
+          <div className="glass rounded-xl p-3 flex gap-3">
+            <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-gray-400 leading-relaxed">{file.note}</p>
+          </div>
+        )}
       </div>
 
       {/* Collapsible sections */}
@@ -93,7 +80,7 @@ export default function FilePanel({ fileName }: FilePanelProps) {
           </button>
           {showColumns && (
             <div className="space-y-1.5 animate-fade-in">
-              {mockColumns.map((col, i) => (
+              {file.columns.map((col, i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between px-3 py-2 rounded-lg glass hover:bg-white/10 transition-colors group"
@@ -126,7 +113,7 @@ export default function FilePanel({ fileName }: FilePanelProps) {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-white/10">
-                    {mockColumns.slice(0, 5).map((col, i) => (
+                    {previewColumns.map((col, i) => (
                       <th key={i} className="text-left py-2 px-2 font-mono text-gray-500 font-medium whitespace-nowrap">
                         {col.name}
                       </th>
@@ -134,9 +121,9 @@ export default function FilePanel({ fileName }: FilePanelProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockPreviewRows.map((row, i) => (
+                  {previewRows.map((row, i) => (
                     <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      {row.slice(0, 5).map((cell, j) => (
+                      {row.map((cell, j) => (
                         <td key={j} className="py-2 px-2 text-gray-400 whitespace-nowrap">
                           {cell}
                         </td>
@@ -145,7 +132,9 @@ export default function FilePanel({ fileName }: FilePanelProps) {
                   ))}
                 </tbody>
               </table>
-              <p className="text-xs text-gray-600 mt-2 text-center">Mostrando 4 de 12,847 linhas</p>
+              <p className="text-xs text-gray-600 mt-2 text-center">
+                Mostrando {file.preview.length} de {file.rows.toLocaleString('pt-BR')} linhas
+              </p>
             </div>
           )}
         </div>

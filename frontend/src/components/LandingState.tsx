@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { ArrowDown, ArrowRight, BarChart3, ChevronDown, FileJson, FileSpreadsheet, FileText, Menu, MessageSquare, Sparkles, UploadCloud, X } from 'lucide-react';
 import { FeatureCheck, InsightsVisual, JsonNetworkVisual, SpreadsheetVisual } from '@/components/LandingVisuals';
+import { API_URL } from '@/config';
+import type { UploadInfo } from '@/types';
 
-type LandingStateProps = {
-  onFileUploaded: (fileName: string) => void;
-};
+type onFileUploaded = (info: UploadInfo) => void;
 
 type FaqItem = {
   question: string;
@@ -13,8 +13,8 @@ type FaqItem = {
 
 const faqItems: FaqItem[] = [
   { question: 'Quais formatos são aceitos?', answer: 'Você pode carregar arquivos CSV, XLSX, XLS e JSON. A TabulaRAG identifica automaticamente as colunas e prepara os dados para a conversa.' },
-  { question: 'Meus dados ficam salvos?', answer: 'Nesta experiência, os dados são processados localmente no navegador e não são enviados para terceiros. Você pode explorar o fluxo sem criar uma conta.' },
-  { question: 'Há limite de linhas?', answer: 'A demonstração foi preparada para datasets tabulares de até 50 mil linhas. Para arquivos maiores, recomendamos dividir os dados em partes.' },
+  { question: 'Meus dados ficam salvos?', answer: 'O arquivo é enviado ao servidor e fica apenas na memória, por até 30 minutos sem uso; nada é gravado em disco. Trechos dos dados (colunas, primeiras linhas e resultados de cálculos) são enviados a um modelo de IA externo (Google Gemini). Evite arquivos com dados sensíveis.' },
+  { question: 'Há limite de linhas?', answer: 'A demonstração aceita arquivos de até 10 MB. Para arquivos maiores, divida os dados em partes.' },
   { question: 'Posso fazer perguntas em português?', answer: 'Sim. Pergunte em português, de forma natural, sobre totais, filtros, médias, tendências e relações entre as colunas.' },
   { question: 'O que acontece depois do upload?', answer: 'A TabulaRAG cria um resumo do arquivo, identifica os tipos de dados e abre um workspace para você começar a conversar com a sua tabela.' },
 ];
@@ -25,7 +25,7 @@ const navItems = [
   { label: 'Dúvidas', href: '#duvidas' },
 ];
 
-export default function LandingState({ onFileUploaded }: LandingStateProps) {
+export default function LandingState({ onFileUploaded }: { onFileUploaded: onFileUploaded }) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -43,16 +43,16 @@ const handleFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append('file', file); // mesmo nome do parâmetro `file` do FastAPI
 
-    const response = await fetch('http://localhost:8000/api/upload', {
+    const response = await fetch(`${API_URL}/api/upload`, {
       method: 'POST',
       body: formData, 
     });
 
     const data = await response.json();
-    if (!response.ok || data.error) {
-      throw new Error(data.detail ?? data.error ?? 'Falha no upload.');
-    }
-    onFileUploaded(data.filename);
+      if (!response.ok) {
+        throw new Error(data.detail ?? 'Falha no upload.');
+      }
+      onFileUploaded(data as UploadInfo);
   } catch (err) {
     setUploadError(err instanceof Error ? err.message : 'Erro inesperado no upload.');
     setSelectedFile(null);
