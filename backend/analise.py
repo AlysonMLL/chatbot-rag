@@ -36,7 +36,7 @@ class AnaliseFalhou(Exception):
     """Não foi possível gerar/executar um código válido; a mensagem é segura para o usuário."""
 
 
-# --------------------------------------------------------------- validação
+# --------------------------------------------------------------------- validação
 NOS_PERMITIDOS = (
     ast.Module, ast.Expr, ast.Assign, ast.AugAssign, ast.Name, ast.Load, ast.Store, ast.Constant,
     ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare, ast.Call, ast.keyword, ast.Attribute,
@@ -161,12 +161,14 @@ Regras do código:
 - Guarde a resposta final na variável `resultado` (DataFrame, Series ou valor simples). Em rankings, no máximo 50 linhas.
 - Não leia nem grave arquivos e não use `query`, `eval`, `format`, `getattr` nem nomes que comecem com `_`.
 - Não altere o `df` original: trabalhe em cópias.
+- Em agrupamentos, prefira `groupby(..., as_index=False)` ou `reset_index(drop=True)` para evitar conflito com nomes de colunas já existentes.
 - Escreva no máximo 25 linhas e responda APENAS com um bloco ```python ... ```."""
 
 PROMPT_EXPLICACAO = """Você explica resultados de análises de dados em português do Brasil.
 {contexto}
 
-Baseie-se SOMENTE no resultado fornecido e não invente números. Seja direto; use lista numerada para
+Baseie-se SOMENTE no resultado fornecido e no contexto acima: não invente números, colunas ou valores. Se a
+informação pedida não aparece no resultado, diga que ela não foi calculada em vez de completar com suposições. Seja direto; use lista numerada para
 rankings; avise sobre empates e sobre valores nulos ignorados quando o resultado indicar isso. Se o
 resultado estiver vazio ou for um erro, diga isso com clareza."""
 
