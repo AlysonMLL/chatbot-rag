@@ -18,7 +18,30 @@ Acesse o site em: [TabulaRAG](https://tabula-rag.vercel.app) (talvez seja necess
 
 <br>
 
-<!-- PREENCHER: logomarcas das tecnologias (mesmo padrão dos READMEs do Verifly e do Jet.URL). Sugestão: VS Code, Python, FastAPI, Pandas, React, TypeScript, Vite, Tailwind, Gemini, Render, Vercel, Git/GitHub. -->
+<p align="center">
+  
+<img width="70" height="70" alt="vs-code-svgrepo-com" src="https://github.com/user-attachments/assets/d7906bee-7540-4bff-935d-ef3ea886e5be" />
+<img width="70" height="70" alt="python-svgrepo" src="https://github.com/user-attachments/assets/2439d9a9-a6b7-49ea-bec0-4aeb9eb0608b" />
+<img width="70" height="70" alt="react-svgrepo-com" src="https://github.com/user-attachments/assets/0b68a090-6fb3-4c0d-83f9-24ae039e6b03" />
+<img width="70" height="70" alt="vite-svgrepo" src="https://github.com/user-attachments/assets/d01e574b-03ef-4067-bd41-d7d64d73f587" />
+<img width="70" height="70" alt="nodejs-icon-logo-svgrepo-com" src="https://github.com/user-attachments/assets/e07e2103-9281-40d0-a7b3-a54b9d61081f" />
+<img width="70" height="70" alt="typescript-official-svgrepo-com" src="https://github.com/user-attachments/assets/db85ab32-6811-45af-87a6-3d19d3b27591" />
+<img width="70" height="70" alt="html-5-svgrepo-com" src="https://github.com/user-attachments/assets/61350760-93f0-4240-9cb6-f9e79d04774c" />
+<img width="70" height="70" alt="css-3-svgrepo-com" src="https://github.com/user-attachments/assets/eca10606-61ea-40db-965f-991563f41871" />
+<img width="70" height="70" alt="tailwind" src="https://github.com/user-attachments/assets/03e06416-020d-420c-a969-33fc6c65ade4" />
+
+<p align="center">
+
+<img width="280" height="70" alt="gemini_zonalogo" src="https://github.com/user-attachments/assets/26842233-4535-452f-bd58-fb9dad034f5e" />
+<img width="210" height="70" alt="pandas_logo" src="https://github.com/user-attachments/assets/c434fc37-2efc-4b15-b2e4-dbbc64a7d58e" />
+<img width="200" height="70" alt="Vercel-white" src="https://github.com/user-attachments/assets/227e13aa-c305-4671-9e92-62ef8a2b333b" />
+<img width="240" height="70" alt="render" src="https://github.com/user-attachments/assets/f6a1e874-971f-4428-857b-83fa7edf56a1" />
+
+
+<p align="center">
+
+<img width="320" height="70" alt="FastAPI_logo" src="https://github.com/user-attachments/assets/2b96f7fc-ca27-4f2c-9583-7d86c4d85d86" />
+<img width="320" height="70" alt="LangChain_zonalogo" src="https://github.com/user-attachments/assets/5b3f646d-77c7-4977-89e0-e48bf0bd936a" />
 
 <br>
 
@@ -34,8 +57,6 @@ Diferente de um chatbot que "adivinha" números, o TabulaRAG usa o modelo de lin
 
 Com uma interface inspirada nos assistentes de IA modernos, tema escuro e layout responsivo, o painel lateral mostra o que foi carregado enquanto o chat acompanha o contexto da conversa.
 
-<!-- PREENCHER: GIF 3 (1000x500) - visão geral da interface (sidebar + chat), incluindo a versão mobile se quiser. -->
-<img width="1000" height="500" alt="tabularag_gif_3" src="COLE_AQUI_A_URL_DO_GIF_3" />
 
 <br>
 
