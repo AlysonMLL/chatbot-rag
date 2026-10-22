@@ -79,18 +79,9 @@ Com uma interface inspirada nos assistentes de IA modernos, tema escuro e layout
 
 O projeto é um monorepo com backend e frontend desacoplados.
 
-```mermaid
-flowchart LR
-    U["Usuário<br/>React + Vite"] -->|"1. Upload CSV, XLSX ou JSON"| API["FastAPI"]
-    API --> P["preparo.py<br/>consolida tabelas empilhadas<br/>e gera o contexto do dataset"]
-    P --> S[("Sessão em memória<br/>file_id + TTL")]
-    U -->|"2. Pergunta + histórico"| API
-    API --> L1["LLM (Gemini)<br/>gera código pandas"]
-    L1 --> V["Validação AST<br/>lista de permissões"]
-    V --> X["Processo isolado<br/>ambiente limpo e timeout"]
-    X --> L2["LLM (Gemini)<br/>explica o resultado"]
-    L2 -->|"3. Resposta + código"| U
-```
+
+<img width="1000" height="300" alt="diagrama_tabula-rag" src="https://github.com/user-attachments/assets/40424b84-5f2f-4d36-8678-c78b8b2a4820" />
+
 
 > **Por que "RAG"?** O nome faz referência à ideia de recuperação aumentada por geração: aqui, o "contexto recuperado" não são trechos de texto com embeddings, e sim o **resultado exato de um cálculo** feito sobre os dados. É uma abordagem de *text-to-code*, mais adequada a perguntas numéricas sobre planilhas do que a busca semântica.
 
@@ -111,7 +102,7 @@ flowchart LR
 ### **Estrutura do repositório:**
 
 ```
-chatbot-rag/
+tabula-rag/
 ├── backend/
 │   ├── main.py             # rotas FastAPI (upload, chat, health)
 │   ├── analise.py          # fluxo de 2 chamadas, validação AST e execução isolada
@@ -166,7 +157,7 @@ O TabulaRAG está em produção, com backend e frontend hospedados separadamente
 
 ### **Em desenvolvimento / planejado**
 
-- [ ] **Escolha entre modelos:** seletor na interface, com lista definida pelo servidor e apenas modelos gratuitos ou de cota generosa.
+- [ ] **Escolha entre modelos:** seletor na interface, com lista definida pelo servidor.
 - [ ] **Adicionar contexto:** campo de texto livre para explicar os dados ao modelo (por exemplo, "valores vazios em gols significam zero").
 - [ ] **Exportar a conversa:** download em Markdown com perguntas, respostas e código usado, e resumo gerado pelo modelo.
 - [ ] **Múltiplos arquivos:** vários DataFrames na mesma sessão, com perguntas que cruzam tabelas.
