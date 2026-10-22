@@ -30,7 +30,7 @@ Acesse o site em: [TabulaRAG](https://tabula-rag.vercel.app) (talvez seja necess
 
 <p align="center">
 
-<img width="280" height="70" alt="gemini_zonalogo" src="https://github.com/user-attachments/assets/26842233-4535-452f-bd58-fb9dad034f5e" />
+<img width="290" height="70" alt="gemini_zonalogo" src="https://github.com/user-attachments/assets/26842233-4535-452f-bd58-fb9dad034f5e" />
 <img width="210" height="70" alt="pandas_logo" src="https://github.com/user-attachments/assets/c434fc37-2efc-4b15-b2e4-dbbc64a7d58e" />
 <img width="200" height="70" alt="Vercel-white" src="https://github.com/user-attachments/assets/227e13aa-c305-4671-9e92-62ef8a2b333b" />
 <img width="240" height="70" alt="render" src="https://github.com/user-attachments/assets/f6a1e874-971f-4428-857b-83fa7edf56a1" />
@@ -39,7 +39,7 @@ Acesse o site em: [TabulaRAG](https://tabula-rag.vercel.app) (talvez seja necess
 <p align="center">
 
 <img width="320" height="70" alt="FastAPI_logo" src="https://github.com/user-attachments/assets/2b96f7fc-ca27-4f2c-9583-7d86c4d85d86" />
-<img width="320" height="70" alt="LangChain_zonalogo" src="https://github.com/user-attachments/assets/5b3f646d-77c7-4977-89e0-e48bf0bd936a" />
+<img width="350" height="70" alt="LangChain_zonalogo" src="https://github.com/user-attachments/assets/5b3f646d-77c7-4977-89e0-e48bf0bd936a" />
 
 <br>
 <br>
