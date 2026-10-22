@@ -59,6 +59,7 @@ Diferente de um chatbot que "adivinha" números, o TabulaRAG usa o modelo de lin
 
 Com uma interface inspirada nos assistentes de IA modernos, tema escuro e layout responsivo, o painel lateral mostra o que foi carregado enquanto o chat acompanha o contexto da conversa.
 
+<img width="1000" height="500" alt="tabularag_3" src="https://github.com/user-attachments/assets/9d954014-afe6-4450-89c1-c8d791a5b777" />
 
 <br>
 
