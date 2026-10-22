@@ -14,8 +14,6 @@ Envie uma planilha (CSV, Excel ou JSON), faça perguntas em português e receba 
 
 Acesse o site em: [TabulaRAG](https://tabula-rag.vercel.app) (talvez seja necessário aguardar até 1 minuto para o Render acordar o servidor)
 
-<!-- PREENCHER: troque a URL acima pela do Vercel. -->
-
 <br>
 
 <p align="center">
@@ -43,6 +41,7 @@ Acesse o site em: [TabulaRAG](https://tabula-rag.vercel.app) (talvez seja necess
 <img width="320" height="70" alt="FastAPI_logo" src="https://github.com/user-attachments/assets/2b96f7fc-ca27-4f2c-9583-7d86c4d85d86" />
 <img width="320" height="70" alt="LangChain_zonalogo" src="https://github.com/user-attachments/assets/5b3f646d-77c7-4977-89e0-e48bf0bd936a" />
 
+<br>
 <br>
 
 <img width="1000" height="500" alt="tabularag_1" src="https://github.com/user-attachments/assets/9c267e46-e523-4d00-acda-886f456df37d" />
